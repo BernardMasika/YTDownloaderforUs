@@ -1,2 +1,54 @@
-# Ignore the downloads folder
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Dependency directories
+node_modules/
+
+# Build directories
+dist/
+build/
+
+# Environment files
+.env
+.env.*.local
+
+# Optional npm cache directory
+.npm/
+
+# Optional Yarn cache directory
+.yarn/
+.pnp.*
+.pnp.js
+
+# Debug output
+.vscode/
+.idea/
+.DS_Store
+*.swp
+
+# System files
+Thumbs.db
+Desktop.ini
+
+# Coverage files
+coverage/
+
+# Temp files
+tmp/
+temp/
+
+# Ignore local Docker-related files
+docker-compose.override.yml
 downloads/
+
+# Ignore compiled binaries (if applicable)
+*.out
+*.exe
+*.so
+
+# Ignore git-ignored files backup
+.gitignore.backup
