@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Video Downloader</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #ff0000;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #cc0000;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        #status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .video-info {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            display: none;
+        }
+        .video-info img {
+            max-width: 200px;
+            margin-bottom: 10px;
+        }
+        select {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: white;
+        }
+        .quality-info {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>YouTube Video Downloader</h1>
+
+    <div class="input-group">
+        <input type="text" id="videoUrl" placeholder="Paste YouTube URL here">
+        <button onclick="getVideoInfo()">Get Video Info</button>
+    </div>
+
+    <div id="videoInfo" class="video-info">
+        <img id="thumbnail" alt="Video thumbnail">
+        <h3 id="videoTitle"></h3>
+        <p id="videoDuration"></p>
+
+        <div class="quality-selection">
+            <h4>Select Quality:</h4>
+            <select id="formatSelect">
+                <option value="">Choose quality...</option>
+            </select>
+            <div id="qualityInfo" class="quality-info"></div>
+        </div>
+
+        <button onclick="downloadVideo()" id="downloadBtn" disabled>Download Video</button>
+    </div>
+
+    <div id="status"></div>
+</div>
+
+<script>
+    let currentVideoUrl = '';
+
+    function formatFileSize(bytes) {
+        if (!bytes) return 'Unknown size';
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(1024));
+        return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
+    }
+
+    function formatDuration(seconds) {
+        const hrs = Math.floor(seconds / 3600);
+        const mins = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
+        return `${hrs ? hrs + ':' : ''}${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    async function getVideoInfo() {
+        const videoUrl = document.getElementById('videoUrl').value;
+        const status = document.getElementById('status');
+        const videoInfo = document.getElementById('videoInfo');
+
+        if (!videoUrl) {
+            showStatus('Please enter a YouTube URL', false);
+            return;
+        }
+
+        try {
+            showStatus('Fetching video information...', true);
+            currentVideoUrl = videoUrl;
+
+            const response = await fetch('/get-info', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: videoUrl })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                document.getElementById('thumbnail').src = data.thumbnail;
+                document.getElementById('videoTitle').textContent = data.title;
+                document.getElementById('videoDuration').textContent = `Duration: ${formatDuration(data.duration)}`;
+
+                const formatSelect = document.getElementById('formatSelect');
+                formatSelect.innerHTML = '<option value="">Choose quality...</option>';
+
+                data.formats.forEach(format => {
+                    const option = document.createElement('option');
+                    option.value = format.formatId;
+                    option.textContent = `${format.resolution} (${format.quality})${format.fps ? ` ${format.fps}fps` : ''}`;
+                    option.dataset.filesize = format.filesize;
+                    option.dataset.resolution = format.resolution;
+                    option.dataset.fps = format.fps;
+                    formatSelect.appendChild(option);
+                });
+
+                videoInfo.style.display = 'block';
+                showStatus('', true);
+
+                formatSelect.onchange = function() {
+                    const selectedOption = this.options[this.selectedIndex];
+                    const qualityInfo = document.getElementById('qualityInfo');
+                    document.getElementById('downloadBtn').disabled = !this.value;
+
+                    if (this.value) {
+                        const filesize = formatFileSize(selectedOption.dataset.filesize);
+                        const resolution = selectedOption.dataset.resolution;
+                        const fps = selectedOption.dataset.fps;
+                        qualityInfo.textContent = `Resolution: ${resolution} | FPS: ${fps || 'N/A'} | File size: ${filesize}`;
+                    } else {
+                        qualityInfo.textContent = '';
+                    }
+                };
+            } else {
+                showStatus(data.error, false);
+            }
+        } catch (error) {
+            showStatus('Error fetching video information', false);
+        }
+    }
+
+    async function downloadVideo() {
+        const formatId = document.getElementById('formatSelect').value;
+        const status = document.getElementById('status');
+
+        if (!formatId) {
+            showStatus('Please select a video quality', false);
+            return;
+        }
+
+        try {
+            showStatus('Downloading video... This may take a few minutes.', true);
+            document.getElementById('downloadBtn').disabled = true;
+
+            const response = await fetch('/download', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    url: currentVideoUrl,
+                    formatId: formatId
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                showStatus(`Success! ${data.filename} has been downloaded.`, true);
+            } else {
+                showStatus(data.error, false);
+            }
+        } catch (error) {
+            showStatus('An error occurred while downloading', false);
+        } finally {
+            document.getElementById('downloadBtn').disabled = false;
+        }
+    }
+
+    function showStatus(message, isSuccess) {
+        const status = document.getElementById('status');
+        status.textContent = message;
+        status.className = message ? (isSuccess ? 'success' : 'error') : '';
+        status.style.display = message ? 'block' : 'none';
+    }
+</script>
+</body>
+</html>
