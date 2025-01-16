@@ -3,6 +3,7 @@ const ytdlp = require('yt-dlp-exec');
 const path = require('path');
 const fs = require('fs');
 const { exec } = require('child_process');
+const os = require('os');
 const app = express();
 
 app.use(express.json());
@@ -19,6 +20,18 @@ function checkFFmpeg() {
             }
         });
     });
+}
+
+// Function to ensure TRAILERS directory exists on desktop
+function ensureTrailersDirectory() {
+    const desktopPath = path.join(os.homedir(), 'Desktop');
+    const trailersPath = path.join(desktopPath, 'TRAILERS');
+
+    if (!fs.existsSync(trailersPath)) {
+        fs.mkdirSync(trailersPath, { recursive: true });
+    }
+
+    return trailersPath;
 }
 
 app.get('/', (req, res) => {
@@ -46,9 +59,6 @@ app.post('/get-info', async (req, res) => {
         // Get all video formats and combine them with best audio
         const formats = videoInfo.formats
             .filter(f => {
-                // Get formats that either:
-                // 1. Have both video and audio (combined formats)
-                // 2. Have only video (will be merged with audio)
                 return (f.vcodec !== 'none' && f.acodec !== 'none') ||
                     (f.vcodec !== 'none' && f.acodec === 'none');
             })
@@ -74,7 +84,6 @@ app.post('/get-info', async (req, res) => {
         const uniqueFormats = formats.reduce((acc, current) => {
             const x = acc.find(item => item.height === current.height);
             if (!x) return acc.concat([current]);
-            // If a format with this height exists, prefer the one with better fps
             if (current.fps > x.fps) {
                 acc[acc.indexOf(x)] = current;
             }
@@ -105,10 +114,8 @@ app.post('/download', async (req, res) => {
             return res.status(400).json({ error: 'Please provide both URL and format ID' });
         }
 
-        const downloadDir = path.join(__dirname, 'downloads');
-        if (!fs.existsSync(downloadDir)) {
-            fs.mkdirSync(downloadDir);
-        }
+        // Ensure TRAILERS directory exists and get its path
+        const trailersPath = ensureTrailersDirectory();
 
         const videoInfo = await ytdlp(url, {
             dumpSingleJson: true,
@@ -117,9 +124,10 @@ app.post('/download', async (req, res) => {
         });
 
         const videoTitle = videoInfo.title.replace(/[^\w\s]/gi, '_');
-        const outputPath = path.join(downloadDir, `${videoTitle}.mp4`);
+        const outputPath = path.join(trailersPath, `${videoTitle}.mp4`);
 
         console.log('Starting download with format ID:', formatId);
+        console.log('Saving to:', outputPath);
 
         // Updated download options
         await ytdlp(url, {
@@ -134,7 +142,8 @@ app.post('/download', async (req, res) => {
 
         res.json({
             message: 'Download completed successfully',
-            filename: `${videoTitle}.mp4`
+            filename: `${videoTitle}.mp4`,
+            savedTo: trailersPath
         });
     } catch (error) {
         console.error('Download error:', error);
