@@ -52,3 +52,5 @@ downloads/
 
 # Ignore git-ignored files backup
 .gitignore.backup
+
+cookies.txt
