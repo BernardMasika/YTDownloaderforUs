@@ -47,7 +47,7 @@ downloads/
 
 # Ignore compiled binaries (if applicable)
 *.out
-# *.exe
+*.exe
 *.so
 
 # Ignore git-ignored files backup
