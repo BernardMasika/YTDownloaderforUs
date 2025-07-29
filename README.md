@@ -39,7 +39,7 @@ A modern web-based YouTube video downloader with real-time progress tracking and
    start_server.bat
    
    # Option 2: Manual start
-   node server.js
+   node server- old using wrapper.js
    ```
 
 5. **Access the app:**
@@ -88,7 +88,7 @@ For better compatibility and access to higher quality formats:
 
 ### Custom Output Location
 
-Edit `server.js` to change download location:
+Edit `server- old using wrapper.js` to change download location:
 ```javascript
 // Change this line in ensureTrailersDirectory()
 const trailersPath = path.join(desktopPath, 'YOUR_FOLDER_NAME');
@@ -98,7 +98,7 @@ const trailersPath = path.join(desktopPath, 'YOUR_FOLDER_NAME');
 
 ```
 YTDownloaderforUs/
-├── server.js              # Main backend server
+├── server- old using wrapper.js              # Main backend server
 ├── index.html             # Web interface
 ├── package.json           # Dependencies
 ├── yt-dlp.exe            # yt-dlp binary
